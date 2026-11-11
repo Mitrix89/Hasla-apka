@@ -76,3 +76,37 @@ jobs:
         with:
           name: hasla-apka-windows
           path: build/windows/x64/runner/Release/
+
+  # Po każdej zmianie na main z nowym numerem wersji (pubspec.yaml) publikuje wydanie na GitHubie.
+  # Aplikacja sprawdza najnowsze wydanie i sama proponuje aktualizację.
+  release:
+    name: Wydanie
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [android, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+      - name: Opublikuj wydanie
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HAS_SIGNING_KEY: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        run: |
+          version=$(sed -nE 's/^version:[[:space:]]*([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' pubspec.yaml)
+          tag="v$version"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Wydanie $tag już istnieje. Podnieś wersję w pubspec.yaml, żeby opublikować nowe."
+            exit 0
+          fi
+          files=(dist/hasla-apka-windows-instalator/*.exe)
+          if [ "$HAS_SIGNING_KEY" = "true" ]; then
+            cp dist/hasla-apka-android/app-release.apk "dist/HaslaApka-$version.apk"
+            files+=("dist/HaslaApka-$version.apk")
+          else
+            echo "::warning::Brak stałego klucza podpisu (sekret ANDROID_KEYSTORE_BASE64), więc wydanie nie zawiera APK. Telefon nie przyjąłby go jako aktualizacji."
+          fi
+          gh release create "$tag" "${files[@]}" --title "Hasła apka $version" --generate-notes --target "$GITHUB_SHA"

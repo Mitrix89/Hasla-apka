@@ -22,6 +22,16 @@ Każda zmiana w repozytorium automatycznie buduje aplikację (zakładka **Action
 
 Program nie ma jeszcze cyfrowego podpisu, więc Windows może pokazać ostrzeżenie SmartScreen („Więcej informacji” → „Uruchom mimo to”).
 
+## Aktualizacje
+
+Wystarczy zainstalować aplikację raz. Potem sama sprawdza na GitHubie (zakładka **Releases**), czy jest nowsza wersja, i pokazuje na ekranie startowym kartę „Dostępna nowa wersja”. Można też sprawdzić ręcznie: **Ustawienia → Sprawdź aktualizacje**.
+
+- **Android:** aplikacja pobiera APK i otwiera systemową instalację. Za pierwszym razem Android poprosi o zgodę „Zezwalaj z tego źródła”.
+- **Windows:** aplikacja pobiera instalator, uruchamia go w tle i zamyka się; po instalacji otwiera się ponownie.
+- Pobrany plik jest sprawdzany sumą kontrolną SHA-256 podaną przez GitHuba.
+
+Jak powstaje wydanie: po scaleniu zmian do `main` z nowym numerem `version` w `pubspec.yaml` zadanie „Wydanie” publikuje release `vX.Y.Z` z instalatorem Windows i APK. APK trafia do wydania tylko wtedy, gdy jest ustawiony stały klucz podpisu (sekret `ANDROID_KEYSTORE_BASE64`), bo inaczej telefon odrzuciłby aktualizację. Aplikacja czyta wydania bez logowania, więc repozytorium musi być publiczne (albo wydania trzeba publikować w osobnym publicznym repozytorium i zbudować aplikację z `--dart-define=UPDATE_REPO=wlasciciel/repo`).
+
 ## Import z Haseł Google
 
 1. Na komputerze: [passwords.google.com](https://passwords.google.com) → Ustawienia → **Eksportuj hasła**.
@@ -78,4 +88,4 @@ flutter test
 flutter run -d windows   # albo podłączony telefon z Androidem
 ```
 
-Struktura: `lib/vault` (szyfrowanie i stan sejfu), `lib/import` (import CSV), `lib/screens` (ekrany), `test/` (testy).
+Struktura: `lib/vault` (szyfrowanie i stan sejfu), `lib/import` (import CSV), `lib/sync` (synchronizacja), `lib/update` (aktualizacje), `lib/screens` (ekrany), `test/` (testy).

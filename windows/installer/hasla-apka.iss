@@ -39,4 +39,5 @@ Name: "{group}\Hasła apka"; Filename: "{app}\hasla_apka.exe"
 Name: "{autodesktop}\Hasła apka"; Filename: "{app}\hasla_apka.exe"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\hasla_apka.exe"; Description: "Uruchom Hasła apka"; Flags: nowait postinstall skipifsilent
+; Bez skipifsilent: po aktualizacji z aplikacji (instalator w trybie /SILENT) program uruchomi się sam.
+Filename: "{app}\hasla_apka.exe"; Description: "Uruchom Hasła apka"; Flags: nowait postinstall

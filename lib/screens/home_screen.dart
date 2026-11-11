@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../app.dart';
 import '../theme.dart';
+import '../update/update_ui.dart';
 import '../util/format.dart';
 import '../util/reminders.dart';
 import '../widgets/brand_header.dart';
@@ -44,6 +45,7 @@ class HomeScreen extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
               children: [
+                const UpdateCard(),
                 Text('Co chcesz otworzyć?',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 20),

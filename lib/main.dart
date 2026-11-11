@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'app.dart';
+import 'update/app_updater.dart';
 import 'vault/biometric_unlock.dart';
 import 'vault/notifications.dart';
 import 'vault/vault_controller.dart';
@@ -16,5 +17,6 @@ Future<void> main() async {
     controller: controller,
     biometrics: BiometricUnlock(),
     notifications: PaymentNotifications(),
+    updater: AppUpdater(),
   ));
 }

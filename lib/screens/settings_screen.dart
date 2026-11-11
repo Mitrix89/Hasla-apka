@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../app.dart';
 import '../theme.dart';
+import '../update/update_ui.dart';
 import 'setup_screen.dart';
 import 'sync_screen.dart';
 
@@ -96,6 +97,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: const Text('Zmień hasło główne'),
                   onTap: _changeMasterPassword,
                 ),
+                const UpdateSettingsTile(),
               ],
             ),
           ),
