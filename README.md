@@ -19,6 +19,23 @@ Każda zmiana w repozytorium automatycznie buduje aplikację (zakładka **Action
 - `hasla-apka-android`: plik `app-release.apk`. Skopiuj na telefon i otwórz (Android zapyta o zgodę na instalację z nieznanego źródła).
 - `hasla-apka-windows`: folder z programem. Rozpakuj i uruchom `hasla_apka.exe`.
 
+## Stały podpis APK (jednorazowa konfiguracja)
+
+Android instaluje aktualizację tylko wtedy, gdy jest podpisana tym samym kluczem co poprzednia wersja.
+Bez tej konfiguracji każde budowanie na GitHubie ma inny klucz i przed aktualizacją trzeba odinstalować aplikację (co kasuje jej dane).
+
+1. Na komputerze z Javą utwórz klucz (zapamiętaj hasło i **zachowaj plik w bezpiecznym miejscu**, bo bez niego nie wydasz aktualizacji):
+   ```sh
+   keytool -genkeypair -keystore hasla-apka.jks -alias hasla-apka -keyalg RSA -keysize 4096 -validity 36500
+   ```
+2. Zamień go na tekst: `base64 -w0 hasla-apka.jks` (Windows PowerShell: `[Convert]::ToBase64String([IO.File]::ReadAllBytes("hasla-apka.jks"))`).
+3. Na GitHubie: Settings → Secrets and variables → Actions → **New repository secret**, dodaj trzy sekrety:
+   - `ANDROID_KEYSTORE_BASE64`: tekst z kroku 2,
+   - `ANDROID_KEYSTORE_PASSWORD`: hasło z kroku 1,
+   - `ANDROID_KEY_ALIAS`: `hasla-apka`.
+
+Od następnego budowania APK będzie zawsze podpisany tym kluczem. Ostatni raz trzeba odinstalować starą wersję.
+
 ## Import z Haseł Google
 
 1. Na komputerze: [passwords.google.com](https://passwords.google.com) → Ustawienia → **Eksportuj hasła**.

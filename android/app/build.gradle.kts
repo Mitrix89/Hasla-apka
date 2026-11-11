@@ -30,11 +30,24 @@ android {
         versionName = flutter.versionName
     }
 
+    // Stały klucz podpisu z sekretów GitHuba (zobacz README, „Stały podpis APK”).
+    // Bez niego APK jest podpisany kluczem testowym, który na GitHubie zmienia się
+    // przy każdym budowaniu, więc Android nie przyjmie go jako aktualizacji.
+    val releaseKeystore = System.getenv("ANDROID_KEYSTORE_PATH")
+    signingConfigs {
+        if (releaseKeystore != null && file(releaseKeystore).exists()) {
+            create("release") {
+                storeFile = file(releaseKeystore)
+                storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("ANDROID_KEY_ALIAS")
+                keyPassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
 }
