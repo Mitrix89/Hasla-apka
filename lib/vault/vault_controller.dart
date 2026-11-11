@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import '../models/category.dart';
 import '../models/password_entry.dart';
 import '../models/payment.dart';
 import '../sync/sync_merge.dart';
@@ -34,6 +35,7 @@ class VaultController extends ChangeNotifier {
   KdfParams? _params;
   List<PasswordEntry> _entries = [];
   List<Payment> _payments = [];
+  List<PasswordCategory> _categories = [];
 
   /// Usunięte wpisy (id → kiedy), potrzebne przy synchronizacji.
   Map<String, DateTime> _deleted = {};
@@ -45,6 +47,13 @@ class VaultController extends ChangeNotifier {
   /// Hasła posortowane alfabetycznie.
   List<PasswordEntry> get entries {
     final list = List<PasswordEntry>.of(_entries);
+    list.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    return list;
+  }
+
+  /// Kategorie haseł posortowane alfabetycznie.
+  List<PasswordCategory> get categories {
+    final list = List<PasswordCategory>.of(_categories);
     list.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     return list;
   }
@@ -109,10 +118,14 @@ class VaultController extends ChangeNotifier {
     _payments = ((data['payments'] as List?) ?? const [])
         .map((e) => Payment.fromJson((e as Map).cast<String, dynamic>()))
         .toList();
+    _categories = ((data['categories'] as List?) ?? const [])
+        .map((e) => PasswordCategory.fromJson((e as Map).cast<String, dynamic>()))
+        .toList();
     _deleted = decodeTombstones(data['deleted']);
     _otherData = Map.of(data)
       ..remove('passwords')
       ..remove('payments')
+      ..remove('categories')
       ..remove('deleted');
     _key = key;
     _params = params;
@@ -147,6 +160,7 @@ class VaultController extends ChangeNotifier {
     _key = null;
     _entries = [];
     _payments = [];
+    _categories = [];
     _deleted = {};
     _otherData = {};
     _status = VaultStatus.locked;
@@ -176,6 +190,51 @@ class VaultController extends ChangeNotifier {
     _requireUnlocked();
     _entries.removeWhere((e) => e.id == id);
     _deleted[id] = DateTime.now();
+    notifyListeners();
+    await _save();
+  }
+
+  PasswordCategory? categoryById(String id) {
+    for (final c in _categories) {
+      if (c.id == id) return c;
+    }
+    return null;
+  }
+
+  /// Dodaje albo zmienia nazwę kategorii.
+  Future<void> upsertCategory(PasswordCategory category) async {
+    _requireUnlocked();
+    final i = _categories.indexWhere((c) => c.id == category.id);
+    if (i == -1) {
+      _categories.add(category);
+    } else {
+      _categories[i] = category;
+    }
+    notifyListeners();
+    await _save();
+  }
+
+  /// Usuwa kategorię. Hasła zostają, tylko przestają do niej należeć.
+  Future<void> deleteCategory(String id) async {
+    _requireUnlocked();
+    _categories.removeWhere((c) => c.id == id);
+    _deleted[id] = DateTime.now();
+    for (var i = 0; i < _entries.length; i++) {
+      final e = _entries[i];
+      if (e.categoryIds.contains(id)) {
+        _entries[i] = e.copyWith(categoryIds: e.categoryIds.where((c) => c != id).toList());
+      }
+    }
+    notifyListeners();
+    await _save();
+  }
+
+  /// Ustawia kategorie jednego hasła (przycisk „Dodaj do”).
+  Future<void> setEntryCategories(String entryId, List<String> categoryIds) async {
+    _requireUnlocked();
+    final i = _entries.indexWhere((e) => e.id == entryId);
+    if (i == -1) return;
+    _entries[i] = _entries[i].copyWith(categoryIds: categoryIds);
     notifyListeners();
     await _save();
   }
@@ -243,7 +302,12 @@ class VaultController extends ChangeNotifier {
   /// Dane do wysłania drugiemu urządzeniu.
   SyncData syncSnapshot() {
     _requireUnlocked();
-    return SyncData(passwords: List.of(_entries), payments: List.of(_payments), deleted: Map.of(_deleted));
+    return SyncData(
+      passwords: List.of(_entries),
+      payments: List.of(_payments),
+      categories: List.of(_categories),
+      deleted: Map.of(_deleted),
+    );
   }
 
   /// Scala dane z drugiego urządzenia z własnymi i zapisuje wynik.
@@ -259,6 +323,7 @@ class VaultController extends ChangeNotifier {
     final stats = mergeSyncData(syncSnapshot(), merged).stats;
     _entries = List.of(merged.passwords);
     _payments = List.of(merged.payments);
+    _categories = List.of(merged.categories);
     _deleted = Map.of(merged.deleted);
     _rollSubscriptions(DateTime.now());
     notifyListeners();
@@ -317,6 +382,7 @@ class VaultController extends ChangeNotifier {
       ..._otherData,
       'passwords': _entries.map((e) => e.toJson()).toList(),
       'payments': _payments.map((p) => p.toJson()).toList(),
+      'categories': _categories.map((c) => c.toJson()).toList(),
       'deleted': _deleted.map((k, v) => MapEntry(k, v.toUtc().toIso8601String())),
     };
     _pendingSave = _pendingSave.then((_) async {

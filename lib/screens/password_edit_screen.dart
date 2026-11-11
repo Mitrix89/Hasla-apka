@@ -8,6 +8,7 @@ import '../models/password_entry.dart';
 import '../theme.dart';
 import '../util/ids.dart';
 import '../util/password_generator.dart';
+import '../widgets/category_picker.dart';
 import '../widgets/letter_avatar.dart';
 
 /// Ekran dodawania / edycji hasła na telefonie.
@@ -63,6 +64,7 @@ class _PasswordFormState extends State<PasswordForm> {
   late final _note = TextEditingController(text: widget.entry?.note ?? '');
   late List<String> _apps = [...?widget.entry?.apps];
   late List<String> _websites = [...?widget.entry?.websites];
+  late List<String> _categoryIds = [...?widget.entry?.categoryIds];
   bool _obscure = true;
   bool _saving = false;
 
@@ -87,6 +89,7 @@ class _PasswordFormState extends State<PasswordForm> {
       apps: _apps,
       websites: _websites,
       note: _note.text.trim(),
+      categoryIds: _categoryIds,
     );
     await vault.upsert(entry);
     if (!mounted) return;
@@ -118,6 +121,28 @@ class _PasswordFormState extends State<PasswordForm> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Usunięto')));
     widget.onDeleted();
+  }
+
+  /// „Dodaj do”: wybór kategorii. Zapisanemu hasłu zmienia je od razu.
+  Future<void> _pickCategories() async {
+    final picked = await showCategoryPicker(context, _categoryIds);
+    if (picked == null || !mounted) return;
+    setState(() => _categoryIds = picked);
+    final entry = widget.entry;
+    if (entry != null) {
+      await AppScope.of(context).vault.setEntryCategories(entry.id, picked);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(picked.isEmpty ? 'Usunięto z kategorii' : 'Zapisano kategorie')),
+      );
+    }
+  }
+
+  Future<void> _removeCategory(String id) async {
+    final next = _categoryIds.where((c) => c != id).toList();
+    setState(() => _categoryIds = next);
+    final entry = widget.entry;
+    if (entry != null) await AppScope.of(context).vault.setEntryCategories(entry.id, next);
   }
 
   Future<void> _addLink({required bool app}) async {
@@ -152,6 +177,49 @@ class _PasswordFormState extends State<PasswordForm> {
         }
       }
     });
+  }
+
+  Widget _categoriesCard() {
+    final vault = AppScope.of(context).vault;
+    final names = <(String, String)>[
+      for (final id in _categoryIds)
+        if (vault.categoryById(id) case final c?) (id, c.name),
+    ];
+    return Card(
+      color: AppColors.background,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Kategorie', style: TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            if (names.isEmpty)
+              const Text('Bez kategorii', style: TextStyle(color: AppColors.muted))
+            else
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final (id, name) in names)
+                    InputChip(
+                      avatar: const Icon(Icons.folder_outlined, size: 18),
+                      label: Text(name),
+                      deleteButtonTooltipMessage: 'Usuń z kategorii',
+                      onDeleted: () => _removeCategory(id),
+                    ),
+                ],
+              ),
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: _pickCategories,
+              icon: const Icon(Icons.create_new_folder_outlined),
+              label: const Text('Dodaj do…'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -281,6 +349,8 @@ class _PasswordFormState extends State<PasswordForm> {
               ),
             ),
           ),
+          const SizedBox(height: 12),
+          _categoriesCard(),
           const SizedBox(height: 14),
           TextFormField(
             controller: _note,

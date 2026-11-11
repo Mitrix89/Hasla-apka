@@ -49,6 +49,12 @@ Bez tej konfiguracji każde budowanie na GitHubie ma inny klucz i przed aktualiz
 
 Od następnego budowania APK będzie zawsze podpisany tym kluczem. Ostatni raz trzeba odinstalować starą wersję.
 
+## Kategorie haseł
+
+Na liście haseł możesz utworzyć własne kategorie (np. „Bank”, „Praca”, „Gry”): przycisk **Utwórz kategorię** pod wyszukiwarką albo menu **⋮ → Zarządzaj kategoriami**. W haśle przycisk **Dodaj do…** pokazuje wszystkie kategorie; jedno hasło może być w kilku naraz. Kategorie pod wyszukiwarką działają jak filtr. Usunięcie kategorii nie usuwa haseł.
+
+Kategorie synchronizują się z drugim urządzeniem, dlatego synchronizacja wymaga tej samej wersji aplikacji (1.3.0 lub nowszej) na obu urządzeniach.
+
 ## Import z Haseł Google
 
 1. Na komputerze: [passwords.google.com](https://passwords.google.com) → Ustawienia → **Eksportuj hasła**.

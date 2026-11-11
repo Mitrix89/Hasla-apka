@@ -4,6 +4,7 @@ import '../app.dart';
 import '../models/password_entry.dart';
 import '../theme.dart';
 import '../widgets/letter_avatar.dart';
+import 'categories_screen.dart';
 import 'import_screen.dart';
 import 'password_edit_screen.dart';
 
@@ -22,6 +23,9 @@ class PasswordsScreen extends StatefulWidget {
 class _PasswordsScreenState extends State<PasswordsScreen> {
   final _search = TextEditingController();
   PasswordFilter _filter = PasswordFilter.all;
+
+  /// Wybrana kategoria (null = wszystkie).
+  String? _categoryId;
   String? _selectedId;
   bool _creating = false;
 
@@ -34,6 +38,7 @@ class _PasswordsScreenState extends State<PasswordsScreen> {
   List<PasswordEntry> _visible(List<PasswordEntry> all) {
     return all.where((e) {
       if (!e.matches(_search.text)) return false;
+      if (_categoryId != null && !e.categoryIds.contains(_categoryId)) return false;
       return switch (_filter) {
         PasswordFilter.all => true,
         PasswordFilter.apps => e.hasApp,
@@ -55,6 +60,10 @@ class _PasswordsScreenState extends State<PasswordsScreen> {
     }
   }
 
+  Future<void> _openCategories() async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CategoriesScreen()));
+  }
+
   Future<void> _openImport() async {
     await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ImportScreen()));
   }
@@ -71,8 +80,10 @@ class _PasswordsScreenState extends State<PasswordsScreen> {
             tooltip: 'Więcej',
             onSelected: (v) {
               if (v == 'import') _openImport();
+              if (v == 'categories') _openCategories();
             },
             itemBuilder: (_) => const [
+              PopupMenuItem(value: 'categories', child: Text('Zarządzaj kategoriami')),
               PopupMenuItem(value: 'import', child: Text('Importuj z Haseł Google')),
             ],
           ),
@@ -90,6 +101,7 @@ class _PasswordsScreenState extends State<PasswordsScreen> {
         listenable: vault,
         builder: (context, _) {
           final all = vault.entries;
+          if (_categoryId != null && vault.categoryById(_categoryId!) == null) _categoryId = null;
           final list = _buildList(context, all, wide);
           if (!wide) return list;
           final selected = _selectedId == null ? null : vault.byId(_selectedId!);
@@ -121,6 +133,31 @@ class _PasswordsScreenState extends State<PasswordsScreen> {
           );
         },
       ),
+    );
+  }
+
+  /// Druga linia filtrów: własne kategorie użytkownika i przycisk do ich zarządzania.
+  Widget _categoryChips(BuildContext context) {
+    final vault = AppScope.of(context).vault;
+    final categories = vault.categories;
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        for (final c in categories)
+          FilterChip(
+            avatar: const Icon(Icons.folder_outlined, size: 18),
+            label: Text(c.name),
+            selected: _categoryId == c.id,
+            onSelected: (on) => setState(() => _categoryId = on ? c.id : null),
+          ),
+        ActionChip(
+          avatar: Icon(categories.isEmpty ? Icons.create_new_folder_outlined : Icons.edit_outlined, size: 18),
+          label: Text(categories.isEmpty ? 'Utwórz kategorię' : 'Kategorie'),
+          onPressed: _openCategories,
+        ),
+      ],
     );
   }
 
@@ -174,6 +211,8 @@ class _PasswordsScreenState extends State<PasswordsScreen> {
               ),
           ],
         ),
+        const SizedBox(height: 8),
+        _categoryChips(context),
         const SizedBox(height: 12),
         if (all.isEmpty)
           _EmptyState(onAdd: () => _open(null), onImport: _openImport)

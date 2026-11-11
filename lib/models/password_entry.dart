@@ -8,10 +8,12 @@ class PasswordEntry {
     List<String>? apps,
     List<String>? websites,
     this.note = '',
+    List<String>? categoryIds,
     DateTime? createdAt,
     DateTime? updatedAt,
   })  : apps = List.unmodifiable(apps ?? const []),
         websites = List.unmodifiable(websites ?? const []),
+        categoryIds = List.unmodifiable(categoryIds ?? const []),
         createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? createdAt ?? DateTime.now();
 
@@ -26,6 +28,9 @@ class PasswordEntry {
   /// Adresy stron (np. "netflix.com").
   final List<String> websites;
   final String note;
+
+  /// Kategorie, do których należy wpis (może być w kilku naraz).
+  final List<String> categoryIds;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -39,6 +44,7 @@ class PasswordEntry {
     List<String>? apps,
     List<String>? websites,
     String? note,
+    List<String>? categoryIds,
     DateTime? updatedAt,
   }) {
     return PasswordEntry(
@@ -49,6 +55,7 @@ class PasswordEntry {
       apps: apps ?? this.apps,
       websites: websites ?? this.websites,
       note: note ?? this.note,
+      categoryIds: categoryIds ?? this.categoryIds,
       createdAt: createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
     );
@@ -72,6 +79,7 @@ class PasswordEntry {
         'apps': apps,
         'websites': websites,
         'note': note,
+        if (categoryIds.isNotEmpty) 'categoryIds': categoryIds,
         'createdAt': createdAt.toUtc().toIso8601String(),
         'updatedAt': updatedAt.toUtc().toIso8601String(),
       };
@@ -85,6 +93,7 @@ class PasswordEntry {
       apps: (json['apps'] as List?)?.cast<String>(),
       websites: (json['websites'] as List?)?.cast<String>(),
       note: json['note'] as String? ?? '',
+      categoryIds: (json['categoryIds'] as List?)?.cast<String>(),
       createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '')?.toLocal(),
       updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '')?.toLocal(),
     );
