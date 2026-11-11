@@ -1,12 +1,14 @@
+import '../models/category.dart';
 import '../models/password_entry.dart';
 import '../models/payment.dart';
 
 /// Dane wymieniane podczas synchronizacji.
 class SyncData {
-  SyncData({required this.passwords, required this.payments, required this.deleted});
+  SyncData({required this.passwords, required this.payments, required this.deleted, this.categories = const []});
 
   final List<PasswordEntry> passwords;
   final List<Payment> payments;
+  final List<PasswordCategory> categories;
 
   /// Usunięte wpisy: id → kiedy usunięto. Dzięki temu usunięcie na jednym
   /// urządzeniu nie „wraca” z drugiego przy następnej synchronizacji.
@@ -15,6 +17,7 @@ class SyncData {
   Map<String, dynamic> toJson() => {
         'passwords': passwords.map((e) => e.toJson()).toList(),
         'payments': payments.map((p) => p.toJson()).toList(),
+        'categories': categories.map((c) => c.toJson()).toList(),
         'deleted': deleted.map((k, v) => MapEntry(k, v.toUtc().toIso8601String())),
       };
 
@@ -24,6 +27,9 @@ class SyncData {
             .toList(),
         payments: ((json['payments'] as List?) ?? const [])
             .map((e) => Payment.fromJson((e as Map).cast<String, dynamic>()))
+            .toList(),
+        categories: ((json['categories'] as List?) ?? const [])
+            .map((e) => PasswordCategory.fromJson((e as Map).cast<String, dynamic>()))
             .toList(),
         deleted: decodeTombstones(json['deleted']),
       );
@@ -89,8 +95,9 @@ const tombstoneTtl = Duration(days: 365);
 
   final passwords = mergeList<PasswordEntry>(local.passwords, remote.passwords, (e) => e.id, (e) => e.updatedAt);
   final payments = mergeList<Payment>(local.payments, remote.payments, (p) => p.id, (p) => p.updatedAt);
+  final categories = mergeList<PasswordCategory>(local.categories, remote.categories, (c) => c.id, (c) => c.updatedAt);
   return (
-    merged: SyncData(passwords: passwords, payments: payments, deleted: deleted),
+    merged: SyncData(passwords: passwords, payments: payments, categories: categories, deleted: deleted),
     stats: SyncStats(added: added, updated: updated, removed: removed),
   );
 }

@@ -65,7 +65,8 @@ class SyncChannel {
 
 const _toHost = 'do-hosta';
 const _toClient = 'do-klienta';
-const _protocol = 1;
+/// 2: kategorie haseł. Starsza wersja na drugim urządzeniu zgubiłaby je, więc odmawiamy.
+const _protocol = 2;
 
 /// Urządzenie, które czeka na połączenie (pokazuje kod QR).
 class SyncHost {
@@ -159,7 +160,10 @@ Future<SyncData> syncWithHost(SyncCode code, SyncData local) async {
     final response = await request.close().timeout(const Duration(seconds: 60));
     final body = await utf8.decodeStream(response);
     if (response.statusCode == HttpStatus.forbidden) {
-      throw const SyncException('Drugie urządzenie odrzuciło kod. Sprawdź, czy przepisałeś go dokładnie.');
+      throw const SyncException(
+        'Drugie urządzenie odrzuciło połączenie. Sprawdź, czy kod jest przepisany dokładnie '
+        'i czy na obu urządzeniach jest ta sama wersja aplikacji.',
+      );
     }
     if (response.statusCode != HttpStatus.ok) {
       throw const SyncException('Drugie urządzenie nie czeka już na połączenie. Pokaż nowy kod.');
