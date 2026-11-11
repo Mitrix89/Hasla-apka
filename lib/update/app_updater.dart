@@ -110,9 +110,15 @@ ReleaseInfo? parseRelease(Map<String, dynamic> json, UpdatePlatform platform) {
 /// Z automatycznych notatek GitHuba zostawia same tytuły zmian, bez linków i autorów.
 String cleanReleaseNotes(String body) {
   final lines = <String>[];
+  var skipSection = false;
   for (var line in const LineSplitter().convert(body)) {
     line = line.trim();
-    if (line.isEmpty || line.startsWith('#') || line.startsWith('**Full Changelog')) continue;
+    if (line.startsWith('#')) {
+      // Sekcja „New Contributors” nie mówi nic o zmianach w aplikacji.
+      skipSection = line.toLowerCase().contains('contributor');
+      continue;
+    }
+    if (skipSection || line.isEmpty || line.startsWith('**Full Changelog')) continue;
     line = line.replaceFirst(RegExp(r'\s+by @\S+ in https://\S+$'), '');
     line = line.replaceFirst(RegExp(r'^[*-]\s+'), '• ');
     lines.add(line);
