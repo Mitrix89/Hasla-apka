@@ -2,8 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../app.dart';
 import '../theme.dart';
+import '../util/format.dart';
+import '../util/reminders.dart';
 import '../widgets/brand_header.dart';
+import '../widgets/payment_tile.dart';
+import 'calendar_screen.dart';
 import 'passwords_screen.dart';
+import 'payment_edit_screen.dart';
 import 'payments_screen.dart';
 import 'settings_screen.dart';
 
@@ -49,14 +54,47 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                _SectionCard(
-                  icon: Icons.credit_card_outlined,
-                  color: AppColors.payments,
-                  softColor: AppColors.paymentsSoft,
-                  title: 'Opłaty i przypomnienia',
-                  subtitle: 'Subskrypcje, rachunki i ważne terminy',
-                  onTap: () =>
-                      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PaymentsScreen())),
+                ListenableBuilder(
+                  listenable: vault,
+                  builder: (context, _) {
+                    final payments = vault.payments;
+                    final monthly = payments.map((p) => p.monthlyCents ?? 0).fold<double>(0, (a, b) => a + b);
+                    final reminders = activeReminders(payments, DateTime.now());
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _SectionCard(
+                          icon: Icons.credit_card_outlined,
+                          color: AppColors.payments,
+                          softColor: AppColors.paymentsSoft,
+                          title: 'Opłaty i przypomnienia',
+                          subtitle: payments.isEmpty
+                              ? 'Subskrypcje, rachunki i ważne terminy'
+                              : '${formatMoney(monthly)} miesięcznie · ${payments.length} poz.',
+                          onTap: () => Navigator.of(context)
+                              .push(MaterialPageRoute(builder: (_) => const PaymentsScreen())),
+                        ),
+                        for (final r in reminders.take(3)) ...[
+                          const SizedBox(height: 12),
+                          ReminderBanner(
+                            payment: r.payment,
+                            daysLeft: r.daysLeft,
+                            onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                              builder: (_) => PaymentEditScreen(paymentId: r.payment.id),
+                            )),
+                          ),
+                        ],
+                        if (reminders.length > 3) ...[
+                          const SizedBox(height: 8),
+                          TextButton(
+                            onPressed: () => Navigator.of(context)
+                                .push(MaterialPageRoute(builder: (_) => const CalendarScreen())),
+                            child: Text('Pokaż wszystkie przypomnienia (${reminders.length})'),
+                          ),
+                        ],
+                      ],
+                    );
+                  },
                 ),
               ],
             ),

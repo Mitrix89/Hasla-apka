@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hasla_apka/models/password_entry.dart';
+import 'package:hasla_apka/models/payment.dart';
 import 'package:hasla_apka/vault/vault_controller.dart';
 import 'package:hasla_apka/vault/vault_crypto.dart';
 import 'package:hasla_apka/vault/vault_store.dart';
@@ -95,7 +96,7 @@ void main() {
     expect(vault.entries.length, 2);
   });
 
-  test('inne dane w sejfie (np. opłaty) nie giną przy zapisie', () async {
+  test('nieznane dane w sejfie (np. z nowszej wersji) nie giną przy zapisie', () async {
     final store = MemoryVaultStore();
     final vault = make(store);
     await vault.create('Haslo-Glowne-123');
@@ -104,13 +105,13 @@ void main() {
     final params = VaultCrypto.readParams(env);
     store.contents = jsonEncode(await VaultCrypto.encrypt({
       'passwords': [],
-      'payments': [{'name': 'Netflix'}],
+      'sync': {'device': 'telefon'},
     }, key, params));
     await vault.lock();
     await vault.unlock('Haslo-Glowne-123');
     await vault.upsert(entry('1', 'Bank'));
     final data = await VaultCrypto.decrypt(jsonDecode(store.contents!) as Map<String, dynamic>, key);
-    expect(data['payments'], [{'name': 'Netflix'}]);
+    expect(data['sync'], {'device': 'telefon'});
     expect((data['passwords'] as List).length, 1);
   });
 
@@ -118,5 +119,44 @@ void main() {
     final vault = make(MemoryVaultStore());
     await vault.init();
     expect(() => vault.upsert(entry('1', 'x')), throwsStateError);
+  });
+
+  test('opłaty: zapis, odczyt, zapłacone i usuwanie', () async {
+    final store = MemoryVaultStore();
+    final vault = make(store);
+    await vault.create('Haslo-Glowne-123');
+    final future = DateTime.now().add(const Duration(days: 10));
+    await vault.upsertPayment(Payment(
+      id: 'oc', name: 'Ubezpieczenie OC', kind: PaymentKind.reminder,
+      dueDate: future, repeat: Repeat.yearly, amountCents: 124000, remindDaysBefore: 30,
+    ));
+    await vault.upsertPayment(Payment(
+      id: 'jed', name: 'Mandat', kind: PaymentKind.bill, dueDate: future, repeat: Repeat.once,
+    ));
+    expect(store.contents, isNot(contains('Ubezpieczenie')));
+
+    await vault.lock();
+    await vault.unlock('Haslo-Glowne-123');
+    expect(vault.payments.length, 2);
+
+    await vault.markPaid('oc');
+    expect(vault.paymentById('oc')!.dueDate, addMonths(dateOnly(future), 12));
+    await vault.markPaid('jed');
+    expect(vault.paymentById('jed'), isNull);
+    await vault.deletePayment('oc');
+    expect(vault.payments, isEmpty);
+  });
+
+  test('przy odblokowaniu subskrypcje przechodzą na kolejny termin, rachunki czekają', () async {
+    final store = MemoryVaultStore();
+    final vault = make(store);
+    await vault.create('Haslo-Glowne-123');
+    final past = dateOnly(DateTime.now()).subtract(const Duration(days: 40));
+    await vault.upsertPayment(Payment(id: 's', name: 'Netflix', kind: PaymentKind.subscription, dueDate: past));
+    await vault.upsertPayment(Payment(id: 'b', name: 'Prąd', kind: PaymentKind.bill, dueDate: past));
+    await vault.lock();
+    await vault.unlock('Haslo-Glowne-123');
+    expect(vault.paymentById('s')!.dueDate.isBefore(dateOnly(DateTime.now())), isFalse);
+    expect(vault.paymentById('b')!.dueDate, past);
   });
 }

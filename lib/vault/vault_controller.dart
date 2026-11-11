@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import '../models/password_entry.dart';
+import '../models/payment.dart';
 import 'vault_crypto.dart';
 import 'vault_store.dart';
 
@@ -31,8 +32,9 @@ class VaultController extends ChangeNotifier {
   Uint8List? _key;
   KdfParams? _params;
   List<PasswordEntry> _entries = [];
+  List<Payment> _payments = [];
 
-  /// Dane z innych części aplikacji (np. opłaty), zachowywane przy zapisie bez zmian.
+  /// Dane, których ta wersja aplikacji nie zna, zachowywane przy zapisie bez zmian.
   Map<String, dynamic> _otherData = {};
   Future<void> _pendingSave = Future.value();
 
@@ -40,6 +42,16 @@ class VaultController extends ChangeNotifier {
   List<PasswordEntry> get entries {
     final list = List<PasswordEntry>.of(_entries);
     list.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    return list;
+  }
+
+  /// Opłaty posortowane po najbliższym terminie.
+  List<Payment> get payments {
+    final list = List<Payment>.of(_payments);
+    list.sort((a, b) {
+      final c = a.dueDate.compareTo(b.dueDate);
+      return c != 0 ? c : a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    });
     return list;
   }
 
@@ -58,6 +70,7 @@ class VaultController extends ChangeNotifier {
     _key = await VaultCrypto.deriveKey(masterPassword, params);
     _params = params;
     _entries = [];
+    _payments = [];
     _otherData = {};
     _status = VaultStatus.unlocked;
     await _save();
@@ -88,11 +101,18 @@ class VaultController extends ChangeNotifier {
     _entries = ((data['passwords'] as List?) ?? const [])
         .map((e) => PasswordEntry.fromJson((e as Map).cast<String, dynamic>()))
         .toList();
-    _otherData = Map.of(data)..remove('passwords');
+    _payments = ((data['payments'] as List?) ?? const [])
+        .map((e) => Payment.fromJson((e as Map).cast<String, dynamic>()))
+        .toList();
+    _otherData = Map.of(data)
+      ..remove('passwords')
+      ..remove('payments');
     _key = key;
     _params = params;
     _status = VaultStatus.unlocked;
+    final rolled = _rollSubscriptions(DateTime.now());
     notifyListeners();
+    if (rolled) await _save();
     return true;
   }
 
@@ -119,6 +139,7 @@ class VaultController extends ChangeNotifier {
     await _pendingSave;
     _key = null;
     _entries = [];
+    _payments = [];
     _otherData = {};
     _status = VaultStatus.locked;
     notifyListeners();
@@ -148,6 +169,64 @@ class VaultController extends ChangeNotifier {
     _entries.removeWhere((e) => e.id == id);
     notifyListeners();
     await _save();
+  }
+
+  Payment? paymentById(String id) {
+    for (final p in _payments) {
+      if (p.id == id) return p;
+    }
+    return null;
+  }
+
+  Future<void> upsertPayment(Payment payment) async {
+    _requireUnlocked();
+    final i = _payments.indexWhere((p) => p.id == payment.id);
+    if (i == -1) {
+      _payments.add(payment);
+    } else {
+      _payments[i] = payment;
+    }
+    notifyListeners();
+    await _save();
+  }
+
+  Future<void> deletePayment(String id) async {
+    _requireUnlocked();
+    _payments.removeWhere((p) => p.id == id);
+    notifyListeners();
+    await _save();
+  }
+
+  /// Oznacza termin jako zapłacony / załatwiony: powtarzająca się pozycja przechodzi
+  /// na kolejny termin, jednorazowa znika.
+  Future<void> markPaid(String id) async {
+    _requireUnlocked();
+    final p = paymentById(id);
+    if (p == null) return;
+    final next = p.nextDueDate();
+    if (next == null) {
+      _payments.removeWhere((x) => x.id == id);
+    } else {
+      _payments[_payments.indexOf(p)] = p.copyWith(dueDate: next);
+    }
+    notifyListeners();
+    await _save();
+  }
+
+  /// Subskrypcje pobierają się same, więc ich termin przesuwa się automatycznie.
+  /// Rachunki i przypomnienia czekają, aż oznaczysz je jako zapłacone.
+  bool _rollSubscriptions(DateTime today) {
+    var changed = false;
+    for (var i = 0; i < _payments.length; i++) {
+      final p = _payments[i];
+      if (p.kind != PaymentKind.subscription) continue;
+      final r = p.rolledForward(today);
+      if (!identical(r, p)) {
+        _payments[i] = r;
+        changed = true;
+      }
+    }
+    return changed;
   }
 
   /// Dodaje hasła z importu, pomijając wpisy, które już są w sejfie.
@@ -200,6 +279,7 @@ class VaultController extends ChangeNotifier {
     final data = <String, dynamic>{
       ..._otherData,
       'passwords': _entries.map((e) => e.toJson()).toList(),
+      'payments': _payments.map((p) => p.toJson()).toList(),
     };
     _pendingSave = _pendingSave.then((_) async {
       final envelope = await VaultCrypto.encrypt(data, key, params);

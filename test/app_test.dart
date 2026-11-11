@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hasla_apka/app.dart';
 import 'package:hasla_apka/models/password_entry.dart';
+import 'package:hasla_apka/models/payment.dart';
 import 'package:hasla_apka/vault/vault_controller.dart';
 import 'package:hasla_apka/vault/vault_crypto.dart';
 import 'package:hasla_apka/vault/vault_store.dart';
@@ -17,6 +18,15 @@ void main() {
     await unlocked.create('Haslo-Glowne-123');
     await unlocked.upsert(PasswordEntry(id: '1', name: 'Netflix', username: 'jan', websites: ['netflix.com']));
     await unlocked.upsert(PasswordEntry(id: '2', name: 'Bank', username: 'ola', apps: ['Bank']));
+    final today = dateOnly(DateTime.now());
+    await unlocked.upsertPayment(Payment(
+      id: 'n', name: 'Netflix', kind: PaymentKind.subscription,
+      dueDate: today.add(const Duration(days: 5)), amountCents: 4900, remindDaysBefore: 1,
+    ));
+    await unlocked.upsertPayment(Payment(
+      id: 'oc', name: 'Ubezpieczenie OC', kind: PaymentKind.reminder, repeat: Repeat.yearly,
+      dueDate: today.add(const Duration(days: 20)), amountCents: 124000, remindDaysBefore: 30,
+    ));
   });
 
   testWidgets('pierwsze uruchomienie pokazuje ustawienie hasła głównego', (tester) async {
@@ -48,5 +58,28 @@ void main() {
     await tester.pump();
     expect(find.text('Bank'), findsOneWidget);
     expect(find.text('Netflix'), findsNothing);
+  });
+
+  testWidgets('opłaty: przypomnienie na starcie, suma, lista i kalendarz', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.5;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(HaslaApp(controller: unlocked));
+    expect(find.text('Ubezpieczenie OC za 20 dni'), findsOneWidget);
+    expect(find.textContaining('49,00'), findsOneWidget);
+
+    await tester.tap(find.text('Opłaty i przypomnienia'));
+    await tester.pumpAndSettle();
+    expect(find.text('Stałe opłaty miesięcznie'), findsOneWidget);
+    expect(find.text('Netflix'), findsOneWidget);
+    expect(find.text('Ubezpieczenie OC'), findsOneWidget);
+
+    await tester.tap(find.text('Przypomnienia'));
+    await tester.pump();
+    expect(find.text('Netflix'), findsNothing);
+
+    await tester.tap(find.byTooltip('Kalendarz'));
+    await tester.pumpAndSettle();
+    expect(find.text('Nadchodzące terminy (90 dni)'), findsOneWidget);
   });
 }
