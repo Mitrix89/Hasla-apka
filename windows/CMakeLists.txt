@@ -31,6 +31,9 @@ set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_RELEASE}")
 
 # Use Unicode for all projects.
 add_definitions(-DUNICODE -D_UNICODE)
+# local_auth_windows (2.0.2) nadal używa <experimental/coroutine>, które nowe MSVC odrzuca
+# jako błąd. Wyłączamy ten komunikat, dopóki wtyczka nie przejdzie na C++20 <coroutine>.
+add_compile_definitions(_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)
 
 # Compilation settings that should be applied to most targets.
 #
