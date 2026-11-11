@@ -7,6 +7,7 @@ import 'screens/home_screen.dart';
 import 'screens/setup_screen.dart';
 import 'screens/unlock_screen.dart';
 import 'theme.dart';
+import 'update/app_updater.dart';
 import 'vault/biometric_unlock.dart';
 import 'vault/notifications.dart';
 import 'vault/vault_controller.dart';
@@ -18,25 +19,31 @@ class AppScope extends InheritedWidget {
     required this.vault,
     required this.biometrics,
     required this.notifications,
+    this.updater,
     required super.child,
   });
   final VaultController vault;
   final BiometricUnlock? biometrics;
   final PaymentNotifications? notifications;
+  final AppUpdater? updater;
 
   static AppScope of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<AppScope>()!;
 
   @override
   bool updateShouldNotify(AppScope oldWidget) =>
-      vault != oldWidget.vault || biometrics != oldWidget.biometrics || notifications != oldWidget.notifications;
+      vault != oldWidget.vault ||
+      biometrics != oldWidget.biometrics ||
+      notifications != oldWidget.notifications ||
+      updater != oldWidget.updater;
 }
 
 class HaslaApp extends StatefulWidget {
-  const HaslaApp({super.key, required this.controller, this.biometrics, this.notifications});
+  const HaslaApp({super.key, required this.controller, this.biometrics, this.notifications, this.updater});
   final VaultController controller;
   final BiometricUnlock? biometrics;
   final PaymentNotifications? notifications;
+  final AppUpdater? updater;
 
   /// Po tylu sekundach w tle sejf sam się zablokuje.
   static const autoLockAfter = Duration(seconds: 60);
@@ -119,6 +126,7 @@ class _HaslaAppState extends State<HaslaApp> with WidgetsBindingObserver {
       vault: widget.controller,
       biometrics: widget.biometrics,
       notifications: widget.notifications,
+      updater: widget.updater,
       child: MaterialApp(
         navigatorKey: _navigatorKey,
         title: 'Hasła apka',

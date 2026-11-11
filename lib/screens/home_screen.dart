@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../app.dart';
 import '../theme.dart';
+import '../update/update_ui.dart';
 import '../util/format.dart';
 import '../util/reminders.dart';
 import '../widgets/brand_header.dart';
@@ -11,6 +12,7 @@ import 'passwords_screen.dart';
 import 'payment_edit_screen.dart';
 import 'payments_screen.dart';
 import 'settings_screen.dart';
+import 'sync_screen.dart';
 
 /// Ekran startowy: wybór między hasłami a opłatami.
 class HomeScreen extends StatelessWidget {
@@ -23,6 +25,11 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         title: const BrandHeader(),
         actions: [
+          IconButton(
+            tooltip: 'Synchronizuj',
+            icon: const Icon(Icons.sync),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SyncScreen())),
+          ),
           IconButton(
             tooltip: 'Ustawienia',
             icon: const Icon(Icons.settings_outlined),
@@ -38,6 +45,7 @@ class HomeScreen extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
               children: [
+                const UpdateCard(),
                 Text('Co chcesz otworzyć?',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 20),

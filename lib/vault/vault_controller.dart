@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/password_entry.dart';
 import '../models/payment.dart';
+import '../sync/sync_merge.dart';
 import 'vault_crypto.dart';
 import 'vault_store.dart';
 
@@ -33,6 +34,9 @@ class VaultController extends ChangeNotifier {
   KdfParams? _params;
   List<PasswordEntry> _entries = [];
   List<Payment> _payments = [];
+
+  /// Usunięte wpisy (id → kiedy), potrzebne przy synchronizacji.
+  Map<String, DateTime> _deleted = {};
 
   /// Dane, których ta wersja aplikacji nie zna, zachowywane przy zapisie bez zmian.
   Map<String, dynamic> _otherData = {};
@@ -71,6 +75,7 @@ class VaultController extends ChangeNotifier {
     _params = params;
     _entries = [];
     _payments = [];
+    _deleted = {};
     _otherData = {};
     _status = VaultStatus.unlocked;
     await _save();
@@ -104,9 +109,11 @@ class VaultController extends ChangeNotifier {
     _payments = ((data['payments'] as List?) ?? const [])
         .map((e) => Payment.fromJson((e as Map).cast<String, dynamic>()))
         .toList();
+    _deleted = decodeTombstones(data['deleted']);
     _otherData = Map.of(data)
       ..remove('passwords')
-      ..remove('payments');
+      ..remove('payments')
+      ..remove('deleted');
     _key = key;
     _params = params;
     _status = VaultStatus.unlocked;
@@ -140,6 +147,7 @@ class VaultController extends ChangeNotifier {
     _key = null;
     _entries = [];
     _payments = [];
+    _deleted = {};
     _otherData = {};
     _status = VaultStatus.locked;
     notifyListeners();
@@ -167,6 +175,7 @@ class VaultController extends ChangeNotifier {
   Future<void> delete(String id) async {
     _requireUnlocked();
     _entries.removeWhere((e) => e.id == id);
+    _deleted[id] = DateTime.now();
     notifyListeners();
     await _save();
   }
@@ -193,6 +202,7 @@ class VaultController extends ChangeNotifier {
   Future<void> deletePayment(String id) async {
     _requireUnlocked();
     _payments.removeWhere((p) => p.id == id);
+    _deleted[id] = DateTime.now();
     notifyListeners();
     await _save();
   }
@@ -206,6 +216,7 @@ class VaultController extends ChangeNotifier {
     final next = p.nextDueDate();
     if (next == null) {
       _payments.removeWhere((x) => x.id == id);
+      _deleted[id] = DateTime.now();
     } else {
       _payments[_payments.indexOf(p)] = p.copyWith(dueDate: next);
     }
@@ -227,6 +238,32 @@ class VaultController extends ChangeNotifier {
       }
     }
     return changed;
+  }
+
+  /// Dane do wysłania drugiemu urządzeniu.
+  SyncData syncSnapshot() {
+    _requireUnlocked();
+    return SyncData(passwords: List.of(_entries), payments: List.of(_payments), deleted: Map.of(_deleted));
+  }
+
+  /// Scala dane z drugiego urządzenia z własnymi i zapisuje wynik.
+  Future<({SyncData merged, SyncStats stats})> mergeFromRemote(SyncData remote) async {
+    final result = mergeSyncData(syncSnapshot(), remote);
+    await applySynced(result.merged);
+    return result;
+  }
+
+  /// Zapisuje dane, które są już scalone (np. odpowiedź od drugiego urządzenia).
+  Future<SyncStats> applySynced(SyncData merged) async {
+    _requireUnlocked();
+    final stats = mergeSyncData(syncSnapshot(), merged).stats;
+    _entries = List.of(merged.passwords);
+    _payments = List.of(merged.payments);
+    _deleted = Map.of(merged.deleted);
+    _rollSubscriptions(DateTime.now());
+    notifyListeners();
+    await _save();
+    return stats;
   }
 
   /// Dodaje hasła z importu, pomijając wpisy, które już są w sejfie.
@@ -280,6 +317,7 @@ class VaultController extends ChangeNotifier {
       ..._otherData,
       'passwords': _entries.map((e) => e.toJson()).toList(),
       'payments': _payments.map((p) => p.toJson()).toList(),
+      'deleted': _deleted.map((k, v) => MapEntry(k, v.toUtc().toIso8601String())),
     };
     _pendingSave = _pendingSave.then((_) async {
       final envelope = await VaultCrypto.encrypt(data, key, params);

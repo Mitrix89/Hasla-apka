@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../app.dart';
 import '../theme.dart';
+import '../update/update_ui.dart';
 import 'setup_screen.dart';
+import 'sync_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -85,10 +87,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: const Text('Odblokowanie odciskiem palca'),
                   ),
                 ListTile(
+                  leading: const Icon(Icons.sync),
+                  title: const Text('Synchronizuj z drugim urządzeniem'),
+                  subtitle: const Text('Telefon i komputer w tej samej sieci Wi-Fi'),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SyncScreen())),
+                ),
+                ListTile(
                   leading: const Icon(Icons.password),
                   title: const Text('Zmień hasło główne'),
                   onTap: _changeMasterPassword,
                 ),
+                const UpdateSettingsTile(),
               ],
             ),
           ),
@@ -96,7 +105,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 8),
             child: Text(
-              'Sejf blokuje się sam po minucie w tle. Synchronizacja z komputerem pojawi się w kolejnej wersji.',
+              'Sejf blokuje się sam po minucie w tle. Każde urządzenie ma własne hasło główne; synchronizacja przenosi same dane.',
               style: TextStyle(color: AppColors.muted, fontSize: 13),
             ),
           ),
