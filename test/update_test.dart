@@ -9,6 +9,9 @@ Map<String, dynamic> _release({String tag = 'v1.3.0', bool prerelease = false}) 
       "## What's Changed\n"
       '* Aktualizacje w aplikacji by @Mitrix89 in https://github.com/Mitrix89/Hasla-apka/pull/5\n'
       '\n'
+      '## New Contributors\n'
+      '* @Mitrix89 made their first contribution in https://github.com/Mitrix89/Hasla-apka/pull/1\n'
+      '\n'
       '**Full Changelog**: https://github.com/Mitrix89/Hasla-apka/compare/v1.2.0...v1.3.0',
   'assets': [
     {
