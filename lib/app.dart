@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
@@ -7,26 +8,35 @@ import 'screens/setup_screen.dart';
 import 'screens/unlock_screen.dart';
 import 'theme.dart';
 import 'vault/biometric_unlock.dart';
+import 'vault/notifications.dart';
 import 'vault/vault_controller.dart';
 
 /// Udostępnia sejf i biometrię wszystkim ekranom.
 class AppScope extends InheritedWidget {
-  const AppScope({super.key, required this.vault, required this.biometrics, required super.child});
+  const AppScope({
+    super.key,
+    required this.vault,
+    required this.biometrics,
+    required this.notifications,
+    required super.child,
+  });
   final VaultController vault;
   final BiometricUnlock? biometrics;
+  final PaymentNotifications? notifications;
 
   static AppScope of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<AppScope>()!;
 
   @override
   bool updateShouldNotify(AppScope oldWidget) =>
-      vault != oldWidget.vault || biometrics != oldWidget.biometrics;
+      vault != oldWidget.vault || biometrics != oldWidget.biometrics || notifications != oldWidget.notifications;
 }
 
 class HaslaApp extends StatefulWidget {
-  const HaslaApp({super.key, required this.controller, this.biometrics});
+  const HaslaApp({super.key, required this.controller, this.biometrics, this.notifications});
   final VaultController controller;
   final BiometricUnlock? biometrics;
+  final PaymentNotifications? notifications;
 
   /// Po tylu sekundach w tle sejf sam się zablokuje.
   static const autoLockAfter = Duration(seconds: 60);
@@ -39,6 +49,7 @@ class _HaslaAppState extends State<HaslaApp> with WidgetsBindingObserver {
   final _navigatorKey = GlobalKey<NavigatorState>();
   DateTime? _hiddenAt;
   VaultStatus? _lastStatus;
+  String? _scheduledFor;
 
   @override
   void initState() {
@@ -56,6 +67,7 @@ class _HaslaAppState extends State<HaslaApp> with WidgetsBindingObserver {
   }
 
   void _onVaultChanged() {
+    _rescheduleIfNeeded();
     final status = widget.controller.status;
     if (status != _lastStatus) {
       _lastStatus = status;
@@ -63,6 +75,17 @@ class _HaslaAppState extends State<HaslaApp> with WidgetsBindingObserver {
       _navigatorKey.currentState?.popUntil((r) => r.isFirst);
       setState(() {});
     }
+  }
+
+  /// Po każdej zmianie opłat planuje powiadomienia od nowa (tylko gdy coś się zmieniło).
+  void _rescheduleIfNeeded() {
+    final notifications = widget.notifications;
+    final vault = widget.controller;
+    if (notifications == null || vault.status != VaultStatus.unlocked) return;
+    final signature = jsonEncode(vault.payments.map((p) => p.toJson()).toList());
+    if (signature == _scheduledFor) return;
+    _scheduledFor = signature;
+    unawaited(notifications.reschedule(vault.payments).catchError((Object _) {}));
   }
 
   @override
@@ -95,6 +118,7 @@ class _HaslaAppState extends State<HaslaApp> with WidgetsBindingObserver {
     return AppScope(
       vault: widget.controller,
       biometrics: widget.biometrics,
+      notifications: widget.notifications,
       child: MaterialApp(
         navigatorKey: _navigatorKey,
         title: 'Hasła apka',

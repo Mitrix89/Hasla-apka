@@ -90,3 +90,17 @@ ThemeData buildTheme() {
     snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
   );
 }
+
+/// Odmiana motywu dla części „Opłaty” (pomarańczowy akcent zamiast niebieskiego).
+ThemeData paymentsTheme(ThemeData base) {
+  return base.copyWith(
+    colorScheme: base.colorScheme.copyWith(primary: AppColors.payments),
+    floatingActionButtonTheme: base.floatingActionButtonTheme.copyWith(backgroundColor: AppColors.payments),
+    inputDecorationTheme: base.inputDecorationTheme.copyWith(
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: AppColors.payments, width: 2),
+      ),
+    ),
+  );
+}
