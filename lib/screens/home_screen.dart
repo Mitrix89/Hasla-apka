@@ -11,6 +11,7 @@ import 'passwords_screen.dart';
 import 'payment_edit_screen.dart';
 import 'payments_screen.dart';
 import 'settings_screen.dart';
+import 'sync_screen.dart';
 
 /// Ekran startowy: wybór między hasłami a opłatami.
 class HomeScreen extends StatelessWidget {
@@ -23,6 +24,11 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         title: const BrandHeader(),
         actions: [
+          IconButton(
+            tooltip: 'Synchronizuj',
+            icon: const Icon(Icons.sync),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SyncScreen())),
+          ),
           IconButton(
             tooltip: 'Ustawienia',
             icon: const Icon(Icons.settings_outlined),

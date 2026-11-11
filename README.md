@@ -10,14 +10,17 @@ Aplikacja na **Androida i Windowsa** z dwiema częściami:
 1. ✅ Projekt wyglądu (makiety ekranów).
 2. ✅ Aplikacja i moduł haseł: hasło główne, odcisk palca, dodawanie, edycja, usuwanie, wyszukiwanie, import z Haseł Google.
 3. ✅ Opłaty i przypomnienia: cykle płatności, kalendarz, powiadomienia, import wyciągu bankowego (CSV).
-4. ⏳ Synchronizacja telefon–komputer i instalatory.
+4. ✅ Synchronizacja telefon–komputer przez Wi-Fi i instalator na Windows.
 
 ## Jak pobrać i zainstalować
 
 Każda zmiana w repozytorium automatycznie buduje aplikację (zakładka **Actions** → ostatnie uruchomienie „Testy i budowanie” → sekcja *Artifacts*):
 
 - `hasla-apka-android`: plik `app-release.apk`. Skopiuj na telefon i otwórz (Android zapyta o zgodę na instalację z nieznanego źródła).
-- `hasla-apka-windows`: folder z programem. Rozpakuj i uruchom `hasla_apka.exe`.
+- `hasla-apka-windows-instalator`: instalator `HaslaApka-Setup-….exe`. Uruchom go, a program pojawi się w menu Start (instalacja bez uprawnień administratora).
+- `hasla-apka-windows`: ten sam program bez instalatora (rozpakuj i uruchom `hasla_apka.exe`).
+
+Program nie ma jeszcze cyfrowego podpisu, więc Windows może pokazać ostrzeżenie SmartScreen („Więcej informacji” → „Uruchom mimo to”).
 
 ## Import z Haseł Google
 
@@ -39,6 +42,20 @@ Duplikaty (ten sam login, hasło i strona) są pomijane, więc import można pow
 ### Import wyciągu z banku
 
 W bankowości internetowej pobierz historię rachunku z ostatnich 6–12 miesięcy jako **CSV**, a potem w aplikacji: Opłaty → menu ⋮ → **Importuj wyciąg z banku**. Aplikacja rozpoznaje kolumny z datą, kwotą i opisem (działa z eksportami m.in. mBanku i PKO, także w kodowaniu Windows-1250), szuka wydatków powtarzających się co miesiąc, kwartał lub rok i pokazuje je do zaznaczenia. Plik nie opuszcza urządzenia.
+
+## Synchronizacja telefon–komputer
+
+Oba urządzenia muszą być w tej samej sieci Wi-Fi.
+
+1. Na komputerze: ikona synchronizacji na ekranie startowym → **Pokaż kod**.
+2. Na telefonie: ikona synchronizacji → **Zeskanuj kod QR** (albo przepisz kod tekstowy).
+3. Gotowe: oba urządzenia mają te same hasła i opłaty.
+
+Nowe wpisy z obu stron są łączone, przy zmianie tego samego wpisu wygrywa nowsza wersja, a usunięcie na jednym urządzeniu usuwa wpis także na drugim.
+Dane idą bezpośrednio między urządzeniami (bez internetu i chmury), zaszyfrowane AES-256-GCM kluczem z jednorazowego kodu, który działa 3 minuty.
+Każde urządzenie może mieć inne hasło główne.
+
+Przy pierwszej synchronizacji Windows może zapytać o zaporę sieciową: zezwól na dostęp w **sieciach prywatnych**.
 
 ## Bezpieczeństwo
 

@@ -57,6 +57,21 @@ jobs:
           channel: stable
           cache: true
       - run: flutter build windows --release
+      - name: Instalator (Inno Setup)
+        shell: pwsh
+        run: |
+          $version = (Select-String -Path pubspec.yaml -Pattern '^version:\s*([0-9.]+)').Matches[0].Groups[1].Value
+          if (-not (Get-Command iscc -ErrorAction SilentlyContinue)) {
+            $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+            if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress | Out-Null }
+          } else { $iscc = "iscc" }
+          if (-not (Get-Command $iscc -ErrorAction SilentlyContinue)) { $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" }
+          & $iscc "/DAppVersion=$version" windows\installer\hasla-apka.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hasla-apka-windows-instalator
+          path: build/installer/*.exe
       - uses: actions/upload-artifact@v4
         with:
           name: hasla-apka-windows
