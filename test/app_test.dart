@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hasla_apka/app.dart';
+import 'package:hasla_apka/models/category.dart';
 import 'package:hasla_apka/models/password_entry.dart';
 import 'package:hasla_apka/models/payment.dart';
 import 'package:hasla_apka/vault/vault_controller.dart';
@@ -81,5 +82,38 @@ void main() {
     await tester.tap(find.byTooltip('Kalendarz'));
     await tester.pumpAndSettle();
     expect(find.text('Nadchodzące terminy (90 dni)'), findsOneWidget);
+  });
+
+  testWidgets('kategorie: „Dodaj do” w haśle i filtr na liście', (tester) async {
+    final vault = unlocked;
+    await tester.runAsync(() => vault.upsertCategory(PasswordCategory(id: 'k1', name: 'Finanse')));
+    await tester.pumpWidget(HaslaApp(controller: vault));
+    await tester.tap(find.text('Hasła'));
+    await tester.pumpAndSettle();
+    expect(find.text('Finanse'), findsOneWidget);
+
+    await tester.tap(find.text('Bank'));
+    await tester.pumpAndSettle();
+    expect(find.text('Bez kategorii'), findsOneWidget);
+    await tester.ensureVisible(find.text('Dodaj do…'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Dodaj do…'));
+    await tester.pumpAndSettle();
+    expect(find.text('Nowa kategoria'), findsOneWidget);
+    await tester.tap(find.widgetWithText(CheckboxListTile, 'Finanse'));
+    await tester.pump();
+    await tester.runAsync(() async {
+      await tester.tap(find.text('Gotowe'));
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    });
+    await tester.pumpAndSettle();
+    expect(vault.byId('2')!.categoryIds, ['k1']);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilterChip, 'Finanse'));
+    await tester.pump();
+    expect(find.text('Bank'), findsOneWidget);
+    expect(find.text('Netflix'), findsNothing);
   });
 }
